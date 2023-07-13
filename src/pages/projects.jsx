@@ -3,39 +3,48 @@ import Image from 'next/image'
 
 import { Card } from '@/components/Card'
 import { SimpleLayout } from '@/components/SimpleLayout'
-import logoAnimaginary from '@/images/logos/animaginary.svg'
-import logoCosmos from '@/images/logos/cosmos.svg'
-import logoHelioStream from '@/images/logos/helio-stream.svg'
-import logoOpenShuttle from '@/images/logos/open-shuttle.svg'
+import logoSpaceX from '@/images/logos/spacex.png'
+import logoWhakaari from '@/images/logos/whakaari.png'
+import logoCustomPages from '@/images/logos/zendesk.svg'
+import logoSBA from '@/images/logos/sba.png'
 
 const projects = [
   {
-    name: 'Animaginary',
+    name: 'SpaceX App',
     description:
-      'High performance web animation library, hand-written in optimized WASM.',
-    link: { href: '#', label: 'github.com' },
-    logo: logoAnimaginary,
+      'SpaceX app displaying information ranging from individual rocket information, to a full list of all SpaceX launches, to upcoming launches!',
+    link: {
+      href: 'https://github.com/tipenehughes/space-x-app',
+      label: 'github.com',
+    },
+    logo: logoSpaceX,
   },
   {
-    name: 'HelioStream',
+    name: 'Whakaari Rotorua',
     description:
-      'Real-time video streaming library, optimized for interstellar transmission.',
-    link: { href: '#', label: 'github.com' },
-    logo: logoHelioStream,
+      'Whakaari Rotorua are a group of performers from Rotorua, New Zealand, who travel around the world sharing their Māori culture through traditional song and dance.',
+    link: {
+      href: 'https://github.com/tipenehughes/whakaari',
+      label: 'github.com',
+    },
+    logo: logoWhakaari,
   },
   {
-    name: 'cosmOS',
+    name: 'Zendesk Custom Pages',
     description:
-      'The operating system that powers our Planetaria space shuttles.',
-    link: { href: '#', label: 'github.com' },
-    logo: logoCosmos,
+      'An example project showcasing the capabilities of the new custom pages feature in Zendesk Guide',
+    link: {
+      href: 'https://github.com/zendesk/custom-pages-example',
+      label: 'github.com',
+    },
+    logo: logoCustomPages,
   },
   {
-    name: 'OpenShuttle',
+    name: 'Community Navigator Pilot Program',
     description:
-      'The schematics for the first rocket I designed that successfully made it to orbit.',
-    link: { href: '#', label: 'github.com' },
-    logo: logoOpenShuttle,
+      'A volunteer project I worked on with a team of 3. This website was built from conceptualization to completion in 2 weeks. ',
+    link: { href: 'https://www.smallbiznavigator.org/', label: 'Link to website' },
+    logo: logoSBA,
   },
 ]
 
@@ -54,15 +63,15 @@ export default function Projects() {
   return (
     <>
       <Head>
-        <title>Projects - Spencer Sharp</title>
+        <title>Projects - Tipene Hughes</title>
         <meta
           name="description"
-          content="Things I’ve made trying to put my dent in the universe."
+          content="Things I’ve built."
         />
       </Head>
       <SimpleLayout
-        title="Things I’ve made trying to put my dent in the universe."
-        intro="I’ve worked on tons of little projects over the years but these are the ones that I’m most proud of. Many of them are open-source, so if you see something that piques your interest, check out the code and contribute if you have ideas for how it can be improved."
+        title="Things I’ve built."
+        intro="Over the years I've worked on many projects including solo passion projects, and more complex apps as part of a team. Here's a selection of projects - big and small - that I'm particulary proud of. "
       >
         <ul
           role="list"
