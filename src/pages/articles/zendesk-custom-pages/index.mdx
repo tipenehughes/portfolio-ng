@@ -1,0 +1,180 @@
+import { ArticleLayout } from '@/components/ArticleLayout'
+import Image from 'next/image'
+import designSystem from './customPages.png'
+
+export const meta = {
+  author: 'Tipene Hughes',
+  date: '2022-04-01',
+  title: 'Zendesk Custom Pages: Backend User Creation',
+  description:
+    'In this feature demonstration, we’ll dive into the specifics of the backend for our Zendesk custom pages single page app built with Node.js and Express.',
+}
+
+export default (props) => <ArticleLayout meta={meta} {...props} />
+
+<Image src={designSystem} alt="" />
+
+In this feature demonstration, we’ll dive into the specifics of the backend for our Zendesk custom pages single page app built with Node.js and Express. Using this app, end users can sign up to become a VIP member and receive tailored support for their organization. A key component of the app is ingesting the user details submitted via the front end form, and passing that to the Zendesk APIs to create or update the user, and their organization in Zendesk. In this article, we’ll show how we went about achieving this.
+
+This article is part of a wider family of articles exploring Zendesk custom pages. You can find out more about other technologies we used and their implementations into custom pages below:
+
+[How We Built: the VIP Support Custom Page](https://developerblog.zendesk.com/how-we-built-the-vip-support-custom-page-f7dfdf1dd259)
+
+It might also be helpful to check out these articles that demonstrate other backend features we implemented on this project such as JWT authentication and email notifications. You can find those below:
+
+[Zendesk Custom Pages: Backend Lead Request Intake](https://medium.com/@ckennedy_40396/create-a-method-to-intake-a-lead-request-and-send-a-response-to-the-frontend-7013c85eebe5)
+
+[Zendesk Custom Pages: Sending Email Notifications](https://medium.com/@ckennedy_40396/create-a-method-to-send-an-email-notification-to-the-user-on-successful-submission-of-their-request-f5bb77ab53e6)
+
+## Laying the Groundwork
+
+An important step in building this app is user authentication. You can read about how we approached that [here](https://medium.com/@ckennedy_40396/7013c85eebe5). Once we’ve authenticated the user and verified that the data is being sent from a trusted source, it’s time to jump into the work of creating or updating the user and their organization. There’s a few steps we have to take to achieve this:
+
+1. First, we need to create a new organization with the details submitted in the front end form. If the organization already exists, we will instead need to search for the organization ID before progressing to the next step.
+2. Next, we create or update the user with the details provided in the front end form, as well as a tag to identify the user as a VIP.
+3. Lastly, we send the organization ID to the **organization_membership** endpoint. Using this endpoint ensures that the new organization does not override any preexisting organizations associated with the user profile.
+
+Okay, with our road map laid out, let’s get started!
+
+## Creating the user organization
+
+The first step in the process is creating the organization based on the details provided by the user. This is accomplished in a function we’ve called **createOrUpdateOrg()**. This function is passed the request object provided via the **/submit** endpoint of our app. The request body will be the details submitted on the front end form. We then make a call to the [Organizations API](https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/) to actually create the organization, which you’ll see below:
+
+```js
+const createOrUpdateOrg = async (req, res) => {
+ const url = `https://${subdomain}.zendesk.com/api/v2/organizations/create_or_update`;
+ const config = {
+   method: "POST",
+   headers: headers,
+   body: JSON.stringify({organization: {name: req.body.organization}})
+ };
+
+ const response = await fetch(url, config);
+```
+
+Here, you’ll see the response from the endpoint is saved to a variable named response. The next thing we’ll need to determine is if the response is a success, or another response type. A 200 success response indicates that the API has created the new organization and we can proceed on to creating the user. A 422 duplicate value response indicates that the organization already exists, in which case we’ll need to get the organization ID before moving on to our next steps. Any other error means that we’ve not been able to process the data for some reason, in which case we’ll send an error message to the front end and stop the process. Here’s how that looks:
+
+```js
+ if (response.ok) {
+   response.json().then(data => {
+    console.log('Org created/updated');
+    createOrUpdateUser(req, res, data.organization);
+  });
+ }
+ else if (response.status===422){
+   // Find the existing org by name if it already exists
+   console.log(`Error creating org...${response.status}: ${response.statusText}...finding existing org by name`);
+   findOrg(req, res);
+ }
+ else {
+   res.status(response.status).send({error:`Cannot create org: ${response.statusText}`});
+ }
+};
+```
+
+Okay, assuming we’ve been able to successfully work with the data we’ve received, let’s take a look at how we’d find the organization ID of an organization that already exists in the Zendesk instance. As you can see in the example above, we’ve created a function called **_findOrg()_** which we pass the same request and response objects provided from our apps /submit endpoint. In this function, we’ll send the data to the [Search API](https://developer.zendesk.com/api-reference/ticketing/ticket-management/search/) to perform a search of the Zendesk instance by querying the organization name provided in the request object. Again, the response is saved in a variable called response:
+
+```js
+const findOrg = async (req, res) => {
+
+ const url = `https://${subdomain}.zendesk.com/api/v2/search.json?query=type:organization "${req.body.organization}"`;
+ const config = {
+   method: "GET",
+   headers: headers
+ };
+
+ const response = await fetch(url, config);
+```
+
+If we receive a successful response, that indicates that the **_Search API_** has found entries which match the organization name we sent in the query. The problem though, is that the API search is non-specific which means that any other organizations which contain the same string in their organization name will be returned. As an example, searching an organization with the word “The” included in their name will return any other organizations with the word “The”, as well. So, what we’ll do is use the Javascript [.find()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/find) method to do an exact match of the organization name provided by the user with the data returned from the API call. Then, we provide that data to the **_createOrUpdateUser()_** function to proceed. Here’s how that looks:
+
+```js
+if (response.ok) {
+  response.json().then((data) => {
+    console.log('Org found by name')
+    // Provides exact matched org name as search API includes non-specific results
+    const matched_org = data.results.find(
+      ({ name }) => name === req.body.organization
+    )
+    createOrUpdateUser(req, res, matched_org)
+  })
+}
+```
+
+Finally, if we’re not able to locate the organization for some reason, we’ll send an error to the front end and stop the process.
+
+Next, we’ll explore how we create or update the user within Zendesk!
+
+## Creating or updating the user
+
+Now that we’ve handled establishing their organization in Zendesk, it’s time to create or update the user with the details submitted in the request body. To do this, we’ve created a function called **_createOrUpdateUser()_** which takes in the request, response and organization objects we passed to it in the previous step.
+
+As with our other functions, the first thing we’ll do here is make a call to the relevant API, in this case the [Users API](https://developer.zendesk.com/api-reference/ticketing/users/users/). As part of the payload body, we’ll include the user’s name and email contained within the request object originally provided to the **_/submit_** endpoint of our app. We’ll also add the optional [verified](https://developer.zendesk.com/api-reference/ticketing/users/user_identities/#verify-identity) property, as well as a tag which identifies the user as a VIP. Again, the response is saved as a variable named response. Here’s how that would look:
+
+```js
+const createOrUpdateUser = async (req, res, org) => {
+ const url = `https://${subdomain}.zendesk.com/api/v2/users/create_or_update`;
+ const config = {
+   method: "POST",
+   headers: headers,
+   body: JSON.stringify({
+     user: {
+       email: req.body.email,
+       name: req.body.name,
+       verified: true,
+       tags: ["VIP"],
+     },
+   }),
+ };
+
+ const response = await fetch(url, config);
+```
+
+Once we receive the response, we’ll check if our request was a success. If so, we’ll then pass the data to the **_createOrgMembership()_** function, which is the final step in the creation process. And as we’ve done previously, in the event we receive any errors we’ll provide that message to the front end and stop the process.
+
+```js
+if (response.ok) {
+   response.json().then(data => {
+     console.log("User created/updated");
+     createOrgMembership(res, data.user, org);
+   });
+ } else {
+   res.status(response.status).send({error:`Cannot create/update user: ${response.statusText}`});
+ }
+};
+```
+
+Okay, if everything went well we’ve now created or updated the user in Zendesk! The last step in the creation process is associating the user with the organization we obtained in the earlier steps.
+
+## Creating an organization membership
+
+In most cases, if you know the user is going to be associated with only one organization, you would simply need to add the organization via the Users API above. However, if the user is associated with multiple organizations, we’ll want to make sure that they are all recorded correctly on the profile. We do this by using the [Organization Membership API](https://developer.zendesk.com/api-reference/ticketing/organizations/organization_memberships/). One thing to note is that multiple organizations may need to be enabled in your account. You can find out more about enabling multiple organizations [here](https://support.zendesk.com/hc/en-us/articles/4408838140314).
+
+We’ve created a function called createOrgMembership() which takes in the request, response and organization objects we passed to it in the previous step. We’ll make a request to the api/v2/organization_memberships endpoint and provide the organization ID and user ID in the body of the request. As always, the response is saved in a variable called response:
+
+```js
+const createOrgMembership = async (res, user, org) => {
+ const url = `https://${subdomain}.zendesk.com/api/v2/organization_memberships`;
+ const config = {
+   method: "POST",
+   headers: headers,
+   body: JSON.stringify({
+     organization_membership: {
+       organization_id: org.id,
+       user_id: user.id
+     }
+   }),
+ };
+```
+
+If the response returns a 422 error, that indicates that the user already belongs to the organization we were attempting to add them to. If the response returns successfully, we’ll notify the front end that the user profile is now associated with the organization and the process has been completed.
+
+In both cases, once the response has been received we’ll pass the user email address into a method called **notifyUser()**.This method makes use of a Node.js module called nodemailer to generate email notifications out to our users. You can find out how we utilized [nodemailer](https://nodemailer.com/about/) in the context of this app at the article [here](https://medium.com/@ckennedy_40396/f5bb77ab53e6)!
+
+Okay, lets recap the steps we took to create or update a user and their organization in Zendesk:
+
+1. We created the organization by calling the **api/v2/organizations/create_or_update** endpoint within the **createOrUpdateUser()** function. If the organization already existed, we queried the **Search API** with **api/v2/search.json?query=type:organization** to obtain the existing organization ID.
+2. We created or updated the user with the data provided in the request object made available via our apps **/submit** endpoint. We also added a tag to the user profile indicating they are a VIP, and we added a property to the profile indicating that they are a verified user.
+3. We passed the organization ID, which we obtained in step one, to a function called **createOrgMembership()**. This function provided the organization ID and user ID to the **api/v2/organization_memberships** endpoint to associate the user profile with the organization. This ensures that we correctly record the organization on the user profile in the event they belong to multiple organizations. We then pass the user email address to the **mail.notifyUser()** function, which we’ll dive into in another article.
+
+That wraps up how we built out the functionality to create and update users and their organization within Zendesk custom Pages and a Node.js and Express backend. Thanks for reading!

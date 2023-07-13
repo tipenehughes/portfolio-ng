@@ -1,0 +1,298 @@
+import { ArticleLayout } from '@/components/ArticleLayout'
+import Image from 'next/image'
+import hero from './hero.png'
+import agentWorkspace from './aw.png'
+import pokedex from './pokedex.gif'
+
+export const meta = {
+  author: 'Tipene Hughes',
+  date: '2021-09-16',
+  title: 'Building my first Zendesk App',
+  description:
+    'Building something interesting and fun has always been a great motivator when learning new tools so when I first started my journey at Zendesk and had the opportunity to build an app using the Zendesk Apps Framework (ZAF), naturally my first thought was: let’s build a Pokédex!',
+}
+
+export default (props) => <ArticleLayout meta={meta} {...props} />
+
+<Image src={hero} alt="" />
+
+Some people learn by watching, some people learn by doing. For me, getting hands on with a product really helps with understanding how it works. Building something interesting and fun has always been a great motivator when learning new tools so when I first started my journey at Zendesk and had the opportunity to build an app using the Zendesk Apps Framework (ZAF), naturally my first thought was: let’s build a Pokédex!
+
+<Image src={pokedex} alt="" />
+
+This article will be an overview of the key concepts I worked with while building out the app. Here’s some links to the different sections if you’d like to skip ahead:
+
+- [Conceptualization](#conceptualization)
+- [Setup](#setup)
+- [API calls using ZAF requests](#api-calls)
+- [ZAF and the Tickets API](#zaf-tickets-api)
+- [Custom Objects](#custom-objects)
+- [Summary](#summary)
+
+## <a name="conceptualization"></a>Conceptualization
+
+The first step in beginning the build process for my app was determining the use case. In this scenario, I would be building a Pokédex for a hypothetical pokemon retailer. The Pokédex would need to allow agents access to pokemon data without relying on 3rd party websites. Additionally, the Pokédex would need to be able to interact directly with tickets, such as populating custom fields. Lastly, the Pokédex would need to be easily accessible and intuitive to use. So, with these conditions front of mind, I determined that my approach would be as follows:
+
+1.  Integrate data directly into the app to allow agents to access said data without leaving their Zendesk instance; first using an external API and then iterating to custom objects.
+2.  Making use of ZAF methods to allow interaction between the app and the Tickets API
+3.  Using the ticket sidebar location for the app and ensuring that only relevant information is displayed, in an intuitive way.
+
+With the groundwork now laid out and a bit of design work done on the side, I was ready to start building the app.
+
+## <a name="setup"></a>Setup
+
+First things first, I needed to set up the project. This was made super easy through the use of the Zendesk Command Line Interface or, ZCLI. The ZCLI gives you a bunch of different options for setting up a project, and I’d encourage you to take a look at the GitHub [repository](https://github.com/zendesk/zcli) to learn more about this exciting tool! For the purposes of this project, I began by spinning up a basic app and then sprinkling a bit of React magic in the mix. To get started, it really is just a couple of simple steps:
+
+1.  Open your terminal and navigate to where you’d like to create the project folder.
+2.  Copy and paste the code below, and be sure to replace the placeholder data with your own: `zcli apps:new --appName=appName --authorEmail=yourEmail --authorName=yourName --path=destinationFolder`
+3.  Done!
+
+And that’s it! The app is ready to start building. You can test this by navigating to the app root directory in your terminal, running `zcli apps:server` and then opening your Zendesk instance and appending `?zcli_apps=true` to the end of the URL. You should see something like this:
+
+<Image src={agentWorkspace} alt="" />
+
+While I had everything I needed to get started by spinning up the app with the ZCLI above, for the purposes of this app I wanted to bring some React into the fold. For that, I needed to add a bit of sugar to the project. I’ll give a step by step here of how I got React up and running with my project. If you’d like to see the code and follow along you can also check out the GitHub [repository](https://github.com/tipenehughes/react-test). Okay, let’s do it!
+
+1.  Before getting started you’ll need to install the required dependencies. First, run npm init to create your package.json file. Then, copy and paste from the list below to get up and running: `npm install react react-dom regenerator-runtime core-js` and `npm install —-save-dev webpack webpack-cli webpack-dev-server html-webpack-plugin css-loader sass sass-loader style-loader svg-inline-loader @babel/core babel-loader @babel/preset-env @babel/preset-react`
+2.  Next, you’ll want to create a /dist folder in the root directory and move the assets folder, translations folder and manifest.json file there.
+3.  Next, you’ll create a src directory. Move the iframe.html from the dist/assets folder to the src folder. This will be used as the template for webpack to create the production file in the assets folder at build time. In the iframe.html file, create a `<div>` with an id of “root” within the `<body>`.
+4.  Next, create an index.js file and App.js file. These will be your starter React files. The [React docs](https://react.dev/) are a great place to start learning about how React files are structured.
+5.  Next, create your webpack.config.js file. Here is where the magic happens. Webpack and babel will bundle and convert the necessary bits and pieces needed for our app to run, and generate the iframe.html file we need in the dist/assets folder.
+6.  Last but not least, we’ll add some scripts to our package.json file to pass commands to webpack.
+
+And there you have it! You’ve now got a fully functional React app up and running with ZAF. To see it in action, in your terminal run npm run build to compile your files, npm run watch to have webpack watch for changes as you’re building, and then `zcli apps:server ./dist` with `?zcli_apps=true` appended to the end of the Zendesk URL.
+
+Again, to see the code used in this set up feel free to check out the repository linked above!
+
+## <a name="api-calls"></a>API calls using the ZAF requests method
+
+Once I had built out the basic functionality of the app, it was time to start getting into the real nuts and bolts of the project: working with the data. Because the pokemon data I needed wasn’t available in a local database (yet) I needed to pull the required data in via the [PokeAPI](https://pokeapi.co/). For this, ZAF has a built-in method for making HTTP requests: `client.request()`. The method accepts one options argument, which can be either the URL of the resource to request (i.e. https://pokeapi.com/api/v2 /pokemon) or an object containing properties such as the URL, request headers, data types etc. You can see the full list of properties [here](https://developer.zendesk.com/api-reference/apps/apps-core-api/client_api/#clientrequestoptions).
+
+So, here’s an example from my app, pulling in the data from the pokeAPI via an asynchronous function, and storing the returned object in state:
+
+```js
+const getPokeData = async () => {
+  //Options object
+  const options = {
+    url: 'https://pokeapi.co/api/v2/pokemon',
+    type: 'GET',
+  }
+  // API Call
+  try {
+    const data = await zafClient.request(options)
+    setPokeData(data)
+  } catch (e) {
+    console.log(e)
+    setIsError(true)
+  }
+}
+```
+
+Let’s break this down step by step:
+
+1.  We’ve created an asynchronous function called getPokeData which we’ll use to make our request.
+2.  We’ve created an options object which will be used as the argument in our request method. In this example, we have the URL that we are making the request to and the request type or method, in this case a GET request.
+3.  Inside a try/catch statement, we are making our `client.request()` call using the above mentioned options argument, and setting the state based on the result if the request is successful. Note: the client object here is named “zafClient” as its imported from a component in the app named zafClient.
+4.  Finally, if we receive any errors, we’re console logging the response and setting our error state to true.
+
+Now the data is available in state to use as needed in the app. I initially had a few API calls sprinkled throughout the app for different uses; later in this article we’ll cover how I imported the unified data into custom objects.
+
+You can find an in depth explanation on how the `client.request()` method works [here](https://developer.zendesk.com/documentation/apps/getting-started/how-apps-framework-client-request-works/).
+
+## <a name="zaf-tickets-api"></a>ZAF and the Tickets API
+
+Now that I had the data I needed, the next step was to build out the functionality to enable interaction between the app and the ticket. The goal here was to allow agents to populate custom fields with data directly from the app. In addition, the app also needed to recognize if a value was already present in the custom fields on page load and display the relevant data based off of that. Introducing: the `client.get()` and `client.set()` methods.
+
+**Client.get()**
+
+The `client.get()` method is used to pull data from the UI into your app. It accepts one _paths_ argument which can be a single path string (e.g _ticket.subject_) or an array of paths. Note: The request runs asynchronously and returns a promise.
+
+**Client.set()**
+
+The `client.set()` method is used to set data in the UI via the Zendesk APIs. It accepts two arguments: _key_ the path to set the value (e.g _ticket.requester_), or an object containing keys and values if you have multiple fields to update.
+
+With the use of these methods I had access to the Zendesk APIs to be able to make updates to both the ticket and the app depending on the user’s needs. Here’s an example of the `client.set()` method in action:
+
+```js
+const populateCustomField = () => {
+  return zafClient.set({
+    'ticket.customField:custom_field_360045346052': pokeData.name,
+    'ticket.customField:custom_field_1900000017347': pokeData.index,
+  })
+}
+```
+
+Let’s unpack this real quick:
+
+1.  We’ve created a function called populateCustomField. In this instance, the function was called by a button click in the app navigation.
+2.  Inside populateCustomField, we have `zafClient.set()` where we’re passing in an object containing two key/value pairs. The key paths are ticket.customField followed by a colon and another value. Some paths can take arguments that you can specify so in this case, we’re specifically targeting the custom field based on its ID. You can find out more about querying custom ticket fields [here](https://developer.zendesk.com/api-reference/apps/apps-support-api/ticket_sidebar/#ticketcustomfieldfieldname). Also, as a reminder: the client object here is named “zafClient” as it’s imported from a component in the app named zafClient.
+3.  Finally, we have the value which we’re updating — in this case pokeData.name and pokeData.index.
+
+And that’s it! The custom fields will now reflect the data that’s just been passed to the UI. Now, if we wanted to pull data from the API into the app, we would use the `client.get()` method. Here’s an example from the Pokédex app:
+
+```js
+const preCheck = async () => {
+  const data = await zafClient.get(
+    'ticket.customField:custom_field_360045346052'
+  )
+  const pokeName = data['ticket.customField:custom_field_360045346052']
+  pokeName != null && setSearchValue(pokeName)
+}
+```
+
+Let’s take a look at what’s happening here:
+
+1.  Because the `client.get()` method returns a promise, we’ve created an asynchronous function called preCheck. In the Pokédex app, this function is called when the component is mounted.
+2.  Next, we have `zafClient.get()` where we’re passing in a single paths argument and assigning the return value to a variable called data.
+3.  Since the response is an object, we’re grabbing the actual custom field value and assigning it to a variable called pokeName.
+4.  Lastly, we’re checking that pokeName does not equal null and assigning the value to our state.
+
+Now, our app is able to check if the custom field has been pre populated and display the relevant information accordingly. Also, using the `client.set()` method we’re able to update the custom fields directly from our app at the click of a button. Cool stuff!
+
+## <a name="custom-objects"></a>Custom Objects
+
+As mentioned earlier in the article, one of the goals of building the Pokédex app was to reduce reliance on 3rd party resources. So, while I had the appropriate data that I needed to display information to our agents by accessing the pokeAPI, I needed a way to store this data locally. This would ensure reliable access to the data, and allow us to make any updates or changes as needed. Enter: Custom Objects.
+
+As per the documentation: _The Custom Objects API lets you define a new object type in Zendesk, then create objects from the new object type. The API stores your objects in the Zendesk infrastructure. You can also use it to define and manage relationships with other objects, including native Zendesk objects like tickets and users._
+
+The Custom Objects API opens up a bunch of possibilities with what you can do with data in Zendesk. The main things to be aware of for the purposes of this article are:
+
+- Object Types: the blueprint for objects that you create. The object type consists of a key attribute which is the name that identifies the object type and a schema attribute, which describes the data.
+- Object Records: an instance of the object type. The object record consists of a type string which corresponds to the key attribute from the object type, and an attributes object which contains the attributes you defined in the object type schema.
+
+[Here](https://developer.zendesk.com/documentation/custom-data/custom-objects/getting-started-with-custom-objects/#enabling-custom-objects) is a great article which will show you everything you need to get started with Custom Objects.
+
+So, for this app I needed to create an object type which provided a scaffold for the data stored within it, and I needed to define object records which in this case would be individual Pokemon and the stats I needed about each one. First things first, let’s take a look at how I created an object type, starting with the JSON file:
+
+```js
+{
+   "data": {
+       "key": "pokeData",
+       "schema": {
+           "properties": {
+               "name": {
+                   "type": "string",
+                   "description": "Name of the pokemon"
+               },
+               "index": {
+                   "type": "string",
+                   "description": "Number of the pokemon"
+               },
+               "image": {
+                   "type": "string",
+                   "description": "Image of the pokemon"
+               },
+               "height": {
+                   "type": "string",
+                   "description": "Height of pokemon"
+               },
+               "weight": {
+                   "type": "string",
+                   "description": "Weight of pokemon"
+               }
+           },
+           "required": [
+               "name",
+               "index"
+           ]
+       }
+   }
+}
+```
+
+As mentioned above, the object type is essentially the blueprint for the object records that you create. You’ll see here that we have the key attribute _pokeData_ which identifies the object type. Next, we have the schema attribute which contains the properties attribute. Properties are basically describing the object you’ll be creating. In this case, each object can have a name, index, image, height and weight property associated with it. Finally, we’re setting what properties will be required when creating an object record. Setting required properties is optional, but in this case we have required that at least a name and index property be present on the object record we create. Take a look at this [link](https://developer.zendesk.com/documentation/custom-data/custom-objects/creating-a-schema-for-a-custom-object/) for more information on creating a schema for object types.
+
+Next, I needed to create the object type in my Zendesk instance. Before doing anything, you’ll need to ensure that custom objects are enabled in your account. You can do this in the admin center → sunshine → objects. Now, with custom objects enabled here’s an example of how I sent that data:
+
+```js
+const setObjectType = async () => {
+  const payload = require('./schema.json')
+  const options = {
+    url: '/api/sunshine/objects/types',
+    type: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: JSON.stringify(payload),
+  }
+  await zafClient.request(options)
+}
+setObjectType()
+```
+
+Success! The object type has been created and is ready to go. You can view the object type and associated properties in the admin center as well. After having created the object type, the next step would be creating the object records to use in the project. No use having an object type without records, right? Here is an example of how I pulled all the relevant data in as Object Records:
+
+```js
+const pokeCall = async () => {
+  const data = await fetch('https://pokeapi.co/api/v2/pokemon?limit=151')
+  const res = await data.json()
+  const objectList = await Promise.all(
+    res.results.map(async (data) => {
+      const pokemonData = async (data) => {
+        const d = await fetch(data.url)
+        const r = await d.json()
+        const objRec = {
+          type: 'pokemon_api',
+          attributes: {
+            name: `${r.name}`,
+            index: `${r.id}`,
+            image: `${r.sprites.other.dream_world.front_default}`,
+            height: `${r.height}`,
+            weight: `${r.weight}`,
+          },
+        }
+        return objRec
+      }
+      return pokemonData(data)
+    })
+  )
+  const objectJob = {
+    type: 'resources',
+    action: 'post',
+    data: objectList,
+  }
+  return objectJob
+}
+```
+
+Let’s go through this step by step:
+
+1.  We’re creating an asynchronous function called pokeCall, fetching the first batch of data from the pokeAPI and assigning the response as JSON to a res variable.
+2.  Next, we have our objectList variable where we iterate over the response results using the .map higher order array method. On each iteration, we’re calling the pokeAPI once again to retrieve granular data from each individual pokemon endpoint. This data is stored in an object named objRec, which has been structured according to the schema we outlined in our Object Type. The objRec will be output in an array of objects by the .map method.
+3.  Lastly, we have objectJob which contains the data that will be sent to the Custom Objects Jobs API to update our Object Records. The object has the type, action, and data properties. The data property is where our objectList array of pokemon objects will be stored.
+
+Now, I just needed to send the data to the Custom Objects Jobs API. Here’s an example of how to do that, step by step:
+
+```js
+const setObjectRecords = async () => {
+  const payload = await pokeCall()
+  const options = {
+    url: '/api/sunshine/jobs',
+    type: 'POST',
+    data: JSON.stringify(payload),
+  }
+  await zafClient.request(options)
+}
+setObjectRecords()
+```
+
+1.  We’ve created an asynchronous function called setObjectRecords.
+2.  Next, we save the returned value from the pokeCall function we outlined above, to a variable named payload.
+3.  We create an options object where we define the settings for our API call.
+4.  Lastly, we send the data using the `client.request()` method we covered earlier in the article. This will create a job ID which you can use to query the `/api/sunshine/jobs/{custom_object_job_id}` endpoint to determine the outcome of the job. You can find out more about Custom Objects Jobs [here](https://developer.zendesk.com/api-reference/custom-data/custom-objects-api/jobs/).
+
+And that’s it! I had defined a custom object type which I’ve then populated with object records based on the data which we’ve retrieved from the pokeAPI. This ensured that I had access to the data locally, and I could make changes and updates to the object records as required.
+
+## <a name="summary"></a>Summary
+
+So, let’s go through the goals from the beginning of the article and see how we did:
+
+1.  Integrate data in to the app first using external APIs, then Custom Objects ✅
+2.  Allow integration between the App and the Zendesk instance ✅
+3.  Intuitive UI using the ticket sidebar location ✅
+
+Nice! Ticked all the boxes that were set at the start 🎉 Once the build is complete, the last step in the process is uploading and installing the app in your account. For detailed instructions on how to upload and install a Zendesk app, see this great [article](https://developer.zendesk.com/documentation/apps/build-an-app/build-your-first-support-app/part-5-installing-the-app-in-zendesk-support/) from our getting started guide.
+
+The Zendesk Apps framework gives a ton of flexibility options for interacting with Zendesk and the APIs. We only really scratched the surface here of what’s possible, but hopefully this has given you some idea of the things you can do with the tools available, I mean, who would’ve thought a Zendesk Pokédex was a thing! If you’d like to check out the full project, here’s a link to the GitHub [repository](https://github.com/tipenehughes/pokedex-zaf-v2).
+
+Keep an eye out for future articles on more exciting topics and if you have any questions or shoutouts feel free to comment below!
