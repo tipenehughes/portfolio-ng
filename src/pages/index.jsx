@@ -204,11 +204,8 @@ export default function Home({ articles }) {
         </title>
         <meta
           name="description"
-          content="Hi! I’m Tipene, a software engineer and developer advocate with a
-          unique blend of technical expertise and customer-centric mindset.
-          Combining technical proficiency with strong communication skills, I
-          bridge the gap between developers and technology, empowering them
-          through advocacy, education, and community engagement."
+          content="I’m Tipene, a software engineer and developer advocate with a
+          unique blend of technical expertise and customer-centric mindset."
         />
       </Head>
       <Container className="mt-9">
