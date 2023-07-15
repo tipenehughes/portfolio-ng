@@ -43,7 +43,10 @@ const projects = [
     name: 'Community Navigator Pilot Program',
     description:
       'A volunteer project I worked on with a team of 3. This website was built from conceptualization to completion in 2 weeks. ',
-    link: { href: 'https://www.smallbiznavigator.org/', label: 'Link to website' },
+    link: {
+      href: 'https://www.smallbiznavigator.org/',
+      label: 'Link to website',
+    },
     logo: logoSBA,
   },
 ]
@@ -64,10 +67,7 @@ export default function Projects() {
     <>
       <Head>
         <title>Projects - Tipene Hughes</title>
-        <meta
-          name="description"
-          content="Things I’ve built."
-        />
+        <meta name="description" content="Things I’ve built." />
       </Head>
       <SimpleLayout
         title="Things I’ve built."
@@ -88,7 +88,9 @@ export default function Projects() {
                 />
               </div>
               <h2 className="mt-6 text-base font-semibold text-zinc-800 dark:text-zinc-100">
-                <Card.Link href={project.link.href}>{project.name}</Card.Link>
+                <Card.Link href={project.link.href} target="_blank">
+                  {project.name}
+                </Card.Link>
               </h2>
               <Card.Description>{project.description}</Card.Description>
               <p className="relative z-10 mt-6 flex text-sm font-medium text-zinc-400 transition group-hover:text-violet-500 dark:text-zinc-200">
