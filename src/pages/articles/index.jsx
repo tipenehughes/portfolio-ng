@@ -77,7 +77,7 @@ function Video() {
           <div className="max-w-xl">
             <div className="group relative">
               <h3 className="mt-3 text-base font-semibold tracking-tight leading-6 text-zinc-800 dark:text-zinc-100">
-                <a href={post.href}>
+                <a href={post.href} target="_blank">
                   <span className="absolute inset-0" />
                   {post.title}
                 </a>

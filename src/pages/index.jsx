@@ -6,12 +6,7 @@ import clsx from 'clsx'
 import { Button } from '@/components/Button'
 import { Card } from '@/components/Card'
 import { Container } from '@/components/Container'
-import {
-  GitHubIcon,
-  InstagramIcon,
-  LinkedInIcon,
-  TwitterIcon,
-} from '@/components/SocialIcons'
+import { GitHubIcon, LinkedInIcon, YoutubeIcon } from '@/components/SocialIcons'
 
 import logoEA from '@/images/logos/ea.png'
 import logoZendesk from '@/images/logos/zendesk.svg'
@@ -79,7 +74,7 @@ function Article({ article }) {
 
 function SocialLink({ icon: Icon, ...props }) {
   return (
-    <Link className="group -m-1 p-1" {...props}>
+    <Link className="group -m-1 p-1" target="_blank" {...props}>
       <Icon className="h-6 w-6 fill-zinc-500 transition group-hover:fill-zinc-600 dark:fill-zinc-400 dark:group-hover:fill-zinc-300" />
     </Link>
   )
@@ -199,9 +194,7 @@ export default function Home({ articles }) {
   return (
     <>
       <Head>
-        <title>
-          Tipene Hughes | Software engineer
-        </title>
+        <title>Tipene Hughes | Software engineer</title>
         <meta
           name="description"
           content="I’m Tipene, a software engineer and developer advocate with a
@@ -222,24 +215,19 @@ export default function Home({ articles }) {
           </p>
           <div className="mt-6 flex gap-6">
             <SocialLink
-              href="https://twitter.com"
-              aria-label="Follow on Twitter"
-              icon={TwitterIcon}
-            />
-            <SocialLink
-              href="https://instagram.com"
-              aria-label="Follow on Instagram"
-              icon={InstagramIcon}
-            />
-            <SocialLink
-              href="https://github.com"
+              href="https://github.com/tipenehughes"
               aria-label="Follow on GitHub"
               icon={GitHubIcon}
             />
             <SocialLink
-              href="https://linkedin.com"
+              href="https://www.linkedin.com/in/tipene-hughes/"
               aria-label="Follow on LinkedIn"
               icon={LinkedInIcon}
+            />
+            <SocialLink
+              href="https://youtube.com/playlist?list=PLb00xo9zloI6zFCavdvGdLVH8rWPRXEA6"
+              aria-label="Follow on Youtube"
+              icon={YoutubeIcon}
             />
           </div>
         </div>
